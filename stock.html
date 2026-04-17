@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockBoard - 주식 대시보드</title>
+    <!-- React & ReactDOM -->
+    <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel -->
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Recharts (Stable Version) -->
+    <script src="https://cdn.jsdelivr.net/npm/prop-types@15.8.1/prop-types.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* slate-900 */
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
+        /* 스크롤바 커스텀 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        
+        .chart-container {
+            width: 100%;
+            height: 350px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div class="flex items-center justify-center h-screen bg-slate-900 text-white">
+            <p class="animate-pulse">데이터를 불러오는 중...</p>
+        </div>
+    </div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { 
+            AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+            LineChart, Line
+        } = window.Recharts;
+
+        // 아이콘 컴포넌트 (SVG)
+        const IconBarChart = () => <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>;
+        const IconGlobe = () => <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>;
+        const IconTrendingUp = () => <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>;
+        const IconNews = () => <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path><path d="M18 14h-8"></path><path d="M15 18h-5"></path><path d="M10 6h8v4h-8V6Z"></path></svg>;
+
+        const mockData = [
+            { date: '01', price: 72000 },
+            { date: '02', price: 73500 },
+            { date: '03', price: 71000 },
+            { date: '04', price: 75000 },
+            { date: '05', price: 78000 },
+            { date: '06', price: 82000 },
+            { date: '07', price: 84500 }
+        ];
+
+        const Dashboard = () => {
+            const [activeTab, setActiveTab] = useState('KOREA');
+            const [isLoading, setIsLoading] = useState(true);
+
+            useEffect(() => {
+                // 시뮬레이션: 초기 로딩
+                setTimeout(() => setIsLoading(false), 500);
+            }, []);
+
+            if (isLoading) {
+                return (
+                    <div className="flex items-center justify-center h-screen bg-slate-900">
+                        <div className="text-blue-500 animate-spin text-4xl">●</div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="flex h-screen bg-slate-900 text-slate-200">
+                    {/* Sidebar */}
+                    <aside className="w-64 bg-slate-800 border-r border-slate-700 flex flex-col shrink-0">
+                        <div className="p-6">
+                            <h1 className="text-2xl font-bold text-blue-400 tracking-tight">StockBoard</h1>
+                        </div>
+                        <nav className="flex-1 px-4 space-y-1">
+                            <NavItem active={activeTab === 'KOREA'} onClick={() => setActiveTab('KOREA')} icon={<IconBarChart />} label="국내 주식" />
+                            <NavItem active={activeTab === 'US'} onClick={() => setActiveTab('US')} icon={<IconGlobe />} label="해외 주식" />
+                            <NavItem active={activeTab === 'ETF'} onClick={() => setActiveTab('ETF')} icon={<IconTrendingUp />} label="ETF (KODEX)" />
+                            <NavItem active={activeTab === 'NEWS'} onClick={() => setActiveTab('NEWS')} icon={<IconNews />} label="주식 뉴스" />
+                        </nav>
+                        <div className="p-4 border-t border-slate-700">
+                            <div className="flex items-center gap-3 p-2">
+                                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">JD</div>
+                                <div>
+                                    <p className="text-xs font-bold text-white">John Doe</p>
+                                    <p className="text-[10px] text-slate-400">Pro Trader</p>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+
+                    {/* Main Content */}
+                    <main className="flex-1 overflow-y-auto p-8">
+                        {/* Top Bar */}
+                        <div className="flex justify-between items-center mb-8">
+                            <div className="relative w-96">
+                                <input 
+                                    type="text" 
+                                    placeholder="종목명, 코드 검색..." 
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all"
+                                />
+                            </div>
+                            <div className="flex gap-6">
+                                <MarketIndex label="KOSPI" value="2,650.21" change="+1.2%" color="text-red-400" />
+                                <MarketIndex label="NASDAQ" value="16,274.94" change="-0.8%" color="text-blue-400" />
+                            </div>
+                        </div>
+
+                        {/* Chart Section */}
+                        <section className="bg-slate-800 border border-slate-700 rounded-2xl p-6 mb-8 shadow-lg">
+                            <div className="flex justify-between items-end mb-8">
+                                <div>
+                                    <div className="flex items-center gap-3 mb-1">
+                                        <h2 className="text-3xl font-bold text-white">삼성전자</h2>
+                                        <span className="text-xs text-slate-400 bg-slate-700 px-2 py-1 rounded">005930</span>
+                                    </div>
+                                    <p className="text-4xl font-black text-white">
+                                        84,500 <span className="text-lg font-normal text-slate-400">KRW</span>
+                                        <span className="text-xl text-red-500 font-bold ml-4">+1,000 (1.20%)</span>
+                                    </p>
+                                </div>
+                                <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-700">
+                                    {['1D', '1W', '1M', '1Y', 'ALL'].map(t => (
+                                        <button key={t} className={`px-4 py-1.5 rounded-md text-xs font-bold transition ${t === '1M' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-200'}`}>
+                                            {t}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="chart-container">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={mockData}>
+                                        <defs>
+                                            <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                                        <XAxis dataKey="date" stroke="#64748b" axisLine={false} tickLine={false} tick={{fontSize: 12}} dy={10} />
+                                        <YAxis stroke="#64748b" axisLine={false} tickLine={false} tick={{fontSize: 12}} domain={['auto', 'auto']} />
+                                        <Tooltip 
+                                            contentStyle={{backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px'}}
+                                            itemStyle={{color: '#3b82f6'}}
+                                        />
+                                        <Area type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </section>
+
+                        {/* Bottom Grid */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+                                <h3 className="text-lg font-bold mb-6 text-white">재무 요약</h3>
+                                <div className="space-y-4">
+                                    <FinancialRow label="매출액" v21="279조" v22="302조" v23="258조" highlight />
+                                    <FinancialRow label="영업이익" v21="51조" v22="43조" v23="6.5조" />
+                                    <FinancialRow label="PER" v21="12.5" v22="10.8" v23="35.2" />
+                                </div>
+                            </div>
+                            <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+                                <h3 className="text-lg font-bold mb-6 text-white">관련 뉴스</h3>
+                                <div className="space-y-4">
+                                    <NewsItem title="삼성전자, 차세대 AI 반도체 양산 돌입" time="1시간 전" source="IT Daily" />
+                                    <NewsItem title="외인·기관, 동반 매수세... 반도체주 강세" time="3시간 전" source="Finance Post" />
+                                    <NewsItem title="글로벌 파운드리 시장 점유율 확대 기대" time="어제" source="Economic Review" />
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const NavItem = ({ active, onClick, icon, label }) => (
+            <button 
+                onClick={onClick}
+                className={`flex items-center gap-3 w-full p-3 rounded-xl transition-all ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200'}`}
+            >
+                {icon}
+                <span className="text-sm font-bold">{label}</span>
+            </button>
+        );
+
+        const MarketIndex = ({ label, value, change, color }) => (
+            <div className="text-right">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{label}</p>
+                <p className="text-lg font-black text-white">{value}</p>
+                <p className={`text-xs font-bold ${color}`}>{change}</p>
+            </div>
+        );
+
+        const FinancialRow = ({ label, v21, v22, v23, highlight }) => (
+            <div className={`grid grid-cols-4 py-3 border-b border-slate-700/50 ${highlight ? 'text-blue-400' : 'text-slate-300'}`}>
+                <span className="text-sm font-bold">{label}</span>
+                <span className="text-sm text-center text-slate-500">{v21}</span>
+                <span className="text-sm text-center text-slate-500">{v22}</span>
+                <span className="text-sm text-right font-bold">{v23}</span>
+            </div>
+        );
+
+        const NewsItem = ({ title, time, source }) => (
+            <div className="group cursor-pointer">
+                <p className="text-sm font-bold text-slate-200 group-hover:text-blue-400 transition-colors line-clamp-1">{title}</p>
+                <div className="flex gap-2 text-[10px] text-slate-500 mt-1">
+                    <span>{source}</span>
+                    <span>•</span>
+                    <span>{time}</span>
+                </div>
+            </div>
+        );
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Dashboard />);
+    </script>
+</body>
+</html>

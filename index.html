@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LuckyPick - 로또 번호 생성기</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&display=swap');
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .lotto-ball {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            box-shadow: inset -3px -3px 5px rgba(0,0,0,0.3), 0 4px 6px rgba(0,0,0,0.1);
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .ball-1 { background: radial-gradient(circle at 30% 30%, #facc15, #a16207); } /* 1-10 노랑 */
+        .ball-2 { background: radial-gradient(circle at 30% 30%, #60a5fa, #1d4ed8); } /* 11-20 파랑 */
+        .ball-3 { background: radial-gradient(circle at 30% 30%, #f87171, #b91c1c); } /* 21-30 빨강 */
+        .ball-4 { background: radial-gradient(circle at 30% 30%, #9ca3af, #374151); } /* 31-40 회색 */
+        .ball-5 { background: radial-gradient(circle at 30% 30%, #4ade80, #15803d); } /* 41-45 초록 */
+        
+        .gold-border { border: 2px solid #fbbf24; }
+        .gold-text { color: #fbbf24; }
+        .btn-primary {
+            background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+            transition: transform 0.1s;
+        }
+        .btn-primary:active { transform: scale(0.95); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const LottoApp = () => {
+            const [numbers, setNumbers] = useState([]);
+            const [history, setHistory] = useState([]);
+            const [includeNums, setIncludeNums] = useState([]);
+            const [excludeNums, setExcludeNums] = useState([]);
+            const [isGenerating, setIsGenerating] = useState(false);
+            const [showSettings, setShowSettings] = useState(false);
+
+            useEffect(() => {
+                const savedHistory = localStorage.getItem('luckyPickHistory');
+                if (savedHistory) setHistory(JSON.parse(savedHistory));
+            }, []);
+
+            const getBallClass = (num) => {
+                if (num <= 10) return 'ball-1';
+                if (num <= 20) return 'ball-2';
+                if (num <= 30) return 'ball-3';
+                if (num <= 40) return 'ball-4';
+                return 'ball-5';
+            };
+
+            const generateNumbers = () => {
+                setIsGenerating(true);
+                setNumbers([]);
+                
+                setTimeout(() => {
+                    let pool = [];
+                    for (let i = 1; i <= 45; i++) {
+                        if (!excludeNums.includes(i)) pool.push(i);
+                    }
+
+                    // 필수 포함 숫자 제외
+                    const availablePool = pool.filter(n => !includeNums.includes(n));
+                    
+                    // 나머지 숫자 셔플
+                    for (let i = availablePool.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [availablePool[i], availablePool[j]] = [availablePool[j], availablePool[i]];
+                    }
+
+                    const result = [...includeNums, ...availablePool.slice(0, 6 - includeNums.length)]
+                        .sort((a, b) => a - b);
+
+                    setNumbers(result);
+                    const newHistory = [result, ...history.slice(0, 9)];
+                    setHistory(newHistory);
+                    localStorage.setItem('luckyPickHistory', JSON.stringify(newHistory));
+                    setIsGenerating(false);
+                }, 800);
+            };
+
+            const toggleInclude = (num) => {
+                if (includeNums.includes(num)) {
+                    setIncludeNums(includeNums.filter(n => n !== num));
+                } else {
+                    if (includeNums.length >= 5) return alert("고정수는 최대 5개까지 선택 가능합니다.");
+                    if (excludeNums.includes(num)) setExcludeNums(excludeNums.filter(n => n !== num));
+                    setIncludeNums([...includeNums, num]);
+                }
+            };
+
+            const toggleExclude = (num) => {
+                if (excludeNums.includes(num)) {
+                    setExcludeNums(excludeNums.filter(n => n !== num));
+                } else {
+                    if (includeNums.includes(num)) setIncludeNums(includeNums.filter(n => n !== num));
+                    setExcludeNums([...excludeNums, num]);
+                }
+            };
+
+            return (
+                <div className="min-h-screen p-4 flex flex-col items-center max-w-md mx-auto">
+                    {/* Header */}
+                    <header className="w-full text-center py-8">
+                        <h1 className="text-4xl font-bold gold-text mb-2 tracking-wider">LuckyPick</h1>
+                        <p className="text-slate-400 text-sm">당신만의 행운을 조합해보세요</p>
+                    </header>
+
+                    {/* Result Area */}
+                    <main className="w-full bg-slate-800/50 rounded-3xl p-6 border border-slate-700 shadow-xl mb-6 min-h-[180px] flex flex-col items-center justify-center">
+                        {numbers.length > 0 ? (
+                            <div className="flex gap-2 justify-center animate__animated animate__fadeIn">
+                                {numbers.map((num, idx) => (
+                                    <div key={idx} className={`lotto-ball ${getBallClass(num)} animate__animated animate__bounceIn`} style={{animationDelay: `${idx * 0.1}s`}}>
+                                        {num}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-slate-500 italic">번호를 생성해주세요</div>
+                        )}
+                        
+                        {isGenerating && (
+                            <div className="mt-4 text-gold-text animate-pulse">행운을 불러오는 중...</div>
+                        )}
+                    </main>
+
+                    {/* Action Buttons */}
+                    <div className="w-full flex gap-3 mb-8">
+                        <button 
+                            onClick={generateNumbers}
+                            disabled={isGenerating}
+                            className="flex-1 btn-primary text-slate-900 font-bold py-4 rounded-2xl shadow-lg text-lg uppercase tracking-tight"
+                        >
+                            {isGenerating ? '생성 중...' : '번호 생성하기'}
+                        </button>
+                        <button 
+                            onClick={() => setShowSettings(!showSettings)}
+                            className="bg-slate-700 hover:bg-slate-600 p-4 rounded-2xl border border-slate-600"
+                        >
+                            ⚙️
+                        </button>
+                    </div>
+
+                    {/* Settings Panel */}
+                    {showSettings && (
+                        <div className="w-full bg-slate-900 border border-slate-700 rounded-3xl p-6 mb-6 animate__animated animate__slideInDown">
+                            <h3 className="font-bold mb-4 flex justify-between">
+                                <span>커스텀 필터 설정</span>
+                                <button onClick={() => setShowSettings(false)} className="text-slate-500">✕</button>
+                            </h3>
+                            
+                            <div className="mb-4">
+                                <p className="text-xs text-slate-400 mb-2">포함할 번호 (최대 5개): {includeNums.length}/5</p>
+                                <div className="grid grid-cols-9 gap-1 h-32 overflow-y-auto custom-scrollbar p-1">
+                                    {Array.from({length: 45}, (_, i) => i + 1).map(n => (
+                                        <button 
+                                            key={n}
+                                            onClick={() => toggleInclude(n)}
+                                            className={`text-[10px] h-8 rounded border ${includeNums.includes(n) ? 'bg-yellow-500 border-yellow-400 text-black' : 'border-slate-700 text-slate-400'}`}
+                                        >
+                                            {n}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <p className="text-xs text-slate-400 mb-2">제외할 번호</p>
+                                <div className="grid grid-cols-9 gap-1 h-32 overflow-y-auto custom-scrollbar p-1">
+                                    {Array.from({length: 45}, (_, i) => i + 1).map(n => (
+                                        <button 
+                                            key={n}
+                                            onClick={() => toggleExclude(n)}
+                                            className={`text-[10px] h-8 rounded border ${excludeNums.includes(n) ? 'bg-red-500 border-red-400 text-white' : 'border-slate-700 text-slate-400'}`}
+                                        >
+                                            {n}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* History Section */}
+                    <section className="w-full">
+                        <h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-widest px-2">최근 생성 히스토리</h2>
+                        <div className="space-y-3">
+                            {history.length > 0 ? history.map((nums, hIdx) => (
+                                <div key={hIdx} className="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-3 flex justify-between items-center animate__animated animate__fadeInUp">
+                                    <div className="flex gap-1.5">
+                                        {nums.map((n, nIdx) => (
+                                            <span key={nIdx} className={`w-7 h-7 rounded-full text-[10px] flex items-center justify-center font-bold ${getBallClass(n)}`}>
+                                                {n}
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <span className="text-[10px] text-slate-500">{history.length - hIdx}회차</span>
+                                </div>
+                            )) : (
+                                <div className="text-center py-10 text-slate-600 text-sm">기록이 없습니다.</div>
+                            )}
+                        </div>
+                    </section>
+
+                    {/* Disclaimer */}
+                    <footer className="mt-auto py-10 text-center">
+                        <p className="text-[10px] text-slate-600 leading-relaxed">
+                            본 서비스는 확률 기반의 오락용 도구이며, 실제 당첨을 보장하지 않습니다.<br/>
+                            로또 구매는 본인의 판단하에 소신껏 즐기시기 바랍니다.
+                        </p>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<LottoApp />);
+    </script>
+</body>
+</html>

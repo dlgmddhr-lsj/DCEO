@@ -1,0 +1,199 @@
+주식 현황판(대시보드) 프로그램을 웹으로 구현하기 위해서는 Frontend(UI), Backend(Data API), 그리고 시각화 라이브러리의 조합이 필요합니다.
+
+초보자부터 중급자까지 참고할 수 있도록 핵심 구조 설계와 바로 실행 가능한 코드 예시를 정리해 드립니다.
+
+1. 기술 스택 추천
+
+Framework: React (대시보드 UI 구성에 최적)
+
+Styling: Tailwind CSS (빠르고 깔끔한 디자인)
+
+Charts: Recharts 또는 TradingView Lightweight Charts (금융 데이터 시각화)
+
+Data API:
+
+국내/해외: 한국투자증권 API, Yahoo Finance API (yfinance)
+
+뉴스: 네이버 뉴스 API, NewsAPI
+
+재무제표: FnPricing, Open DART (국내), Financial Modeling Prep (해외)
+
+2. 대시보드 화면 설계 (UI Layout)
+
+사이드바: 국내주식, 해외주식, ETF(KODEX/TIGER), 관심종목 메뉴
+
+상단 바: 지수 현황 (KOSPI, KOSDAQ, S&P500, 나스닥) 및 검색창
+
+메인 영역:
+
+상단: 선택한 종목의 현재가, 등락률, 주요 지표
+
+중앙: 차트 (일/주/월/연 선택 버튼)
+
+하단 왼쪽: 해당 기업 재무제표 (매출, 영업이익, PER 등)
+
+하단 오른쪽: 관련 실시간 뉴스
+
+3. 핵심 코드 예시 (React + Tailwind + Recharts)
+
+이 코드는 대략적인 UI 구조를 보여주는 프로토타입입니다.
+
+code
+Jsx
+download
+content_copy
+expand_less
+import React, { useState } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { Search, TrendingUp, Newspaper, BarChart2, Globe } from 'lucide-react';
+
+// 가상 데이터 (실제로는 API에서 가져와야 함)
+const mockChartData = [
+  { date: '2023-01', price: 60000 },
+  { date: '2023-04', price: 65000 },
+  { date: '2023-07', price: 72000 },
+  { date: '2023-10', price: 68000 },
+  { date: '2024-01', price: 85000 },
+];
+
+const StockDashboard = () => {
+  const [market, setMarket] = useState('KOREA'); // KOREA, US, ETF
+
+  return (
+    <div className="flex h-screen bg-gray-900 text-white font-sans">
+      {/* 1. 사이드바 */}
+      <aside className="w-64 bg-gray-800 p-6 border-r border-gray-700">
+        <h1 className="text-2xl font-bold mb-10 text-blue-400">StockBoard</h1>
+        <nav className="space-y-4">
+          <button onClick={() => setMarket('KOREA')} className="flex items-center space-x-3 w-full p-2 hover:bg-gray-700 rounded"><BarChart2 size={20}/> <span>국내 주식</span></button>
+          <button onClick={() => setMarket('US')} className="flex items-center space-x-3 w-full p-2 hover:bg-gray-700 rounded"><Globe size={20}/> <span>해외 주식</span></button>
+          <button onClick={() => setMarket('ETF')} className="flex items-center space-x-3 w-full p-2 hover:bg-gray-700 rounded"><TrendingUp size={20}/> <span>ETF (KODEX/TIGER)</span></button>
+          <button className="flex items-center space-x-3 w-full p-2 hover:bg-gray-700 rounded"><Newspaper size={20}/> <span>주식 뉴스</span></button>
+        </nav>
+      </aside>
+
+      {/* 2. 메인 콘텐츠 */}
+      <main className="flex-1 overflow-y-auto p-8">
+        {/* 검색 및 상단 정보 */}
+        <div className="flex justify-between items-center mb-8">
+          <div className="relative w-1/3">
+            <input type="text" placeholder="종목명 또는 코드 입력" className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2 px-10 focus:outline-none focus:border-blue-500" />
+            <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+          </div>
+          <div className="flex space-x-6">
+            <div className="text-right"><p className="text-sm text-gray-400">KOSPI</p><p className="text-xl font-bold text-red-500">2,650.21 ▲</p></div>
+            <div className="text-right"><p className="text-sm text-gray-400">NASDAQ</p><p className="text-xl font-bold text-green-500">16,274.94 ▼</p></div>
+          </div>
+        </div>
+
+        {/* 차트 영역 */}
+        <div className="bg-gray-800 p-6 rounded-xl mb-8">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-2xl font-bold">삼성전자 <span className="text-sm text-gray-400">005930</span></h2>
+              <p className="text-3xl font-extrabold mt-1">84,500원 <span className="text-lg text-red-500 font-normal">+1.2%</span></p>
+            </div>
+            <div className="flex bg-gray-700 rounded-lg p-1">
+              {['일', '주', '월', '연'].map((t) => (
+                <button key={t} className="px-4 py-1 hover:bg-gray-600 rounded-md transition">{t}</button>
+              ))}
+            </div>
+          </div>
+          <div className="h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={mockChartData}>
+                <defs>
+                  <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="date" stroke="#9ca3af" />
+                <YAxis stroke="#9ca3af" domain={['auto', 'auto']} />
+                <Tooltip contentStyle={{backgroundColor: '#1f2937', border: 'none'}} />
+                <Area type="monotone" dataKey="price" stroke="#3b82f6" fillOpacity={1} fill="url(#colorPrice)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* 하단 그리드: 재무제표 & 뉴스 */}
+        <div className="grid grid-cols-2 gap-8">
+          <div className="bg-gray-800 p-6 rounded-xl">
+            <h3 className="text-lg font-bold mb-4">주요 재무제표 (연간)</h3>
+            <table className="w-full text-sm text-left">
+              <thead>
+                <tr className="text-gray-400 border-b border-gray-700">
+                  <th className="pb-2">항목</th>
+                  <th className="pb-2">2021</th>
+                  <th className="pb-2">2022</th>
+                  <th className="pb-2">2023(E)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700">
+                <tr><td className="py-3">매출액</td><td>279조</td><td>302조</td><td>258조</td></tr>
+                <tr><td className="py-3">영업이익</td><td>51조</td><td>43조</td><td>6.5조</td></tr>
+                <tr><td className="py-3">당기순이익</td><td>39조</td><td>55조</td><td>12조</td></tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <div className="bg-gray-800 p-6 rounded-xl">
+            <h3 className="text-lg font-bold mb-4">관심 기업 뉴스</h3>
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="border-b border-gray-700 pb-2 cursor-pointer hover:text-blue-400">
+                  <p className="font-medium line-clamp-1">삼성전자, AI 반도체 HBM3E 양산 가속화...</p>
+                  <p className="text-xs text-gray-500 mt-1">경제신문 · 2시간 전</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default StockDashboard;
+4. 주요 기능별 구현 가이드
+① 데이터 가져오기 (API 연동)
+
+국내 주식: 한국투자증권 KIS Developers API를 추천합니다. 무료이며 국내 주식 호가, 차트, 잔고 조회가 가능합니다.
+
+해외 주식: Yahoo Finance (yfinance) 라이브러리를 사용하거나 Alpha Vantage API를 사용하세요.
+
+② ETF 분류 (KODEX, TIGER)
+
+ETF는 국내 주식 API에서 종목 코드를 필터링하여 구현합니다.
+
+예: 277630 (TIGER 미국나스닥100), 069500 (KODEX 200).
+
+별도의 카테고리 탭을 만들어 해당 코드 리스트만 서버에서 불러와 보여주면 됩니다.
+
+③ 재무제표 조회 (100대 기업)
+
+Open DART API: 금융감독원 전자공시시스템에서 제공하는 API를 통해 상장사 재무제표를 JSON 형태로 받을 수 있습니다.
+
+매출액, 영업이익, ROE, PER 등을 표 형식으로 렌더링합니다.
+
+④ 기간별 그래프 (일/주/월/연)
+
+API 호출 시 period 파라미터를 조절해야 합니다.
+
+일간: 분 단위 데이터 (Intraday)
+
+주간/월간: 일봉(Daily) 데이터를 가져와 프론트엔드에서 묶어서 표시
+
+연간: 주봉 또는 월봉 데이터를 호출
+
+5. 다음 단계 추천
+
+React 프로젝트 생성: npx create-react-app stock-dashboard
+
+라이브러리 설치: npm install recharts lucide-react axios
+
+백엔드 구축 (선택사항): 보안(API Key 숨기기)을 위해 Node.js나 Python(FastAPI)으로 간단한 프록시 서버를 만드는 것이 좋습니다.
+
+어떤 부분을 더 구체적으로 알고 싶으신가요? (예: 특정 API 연동 방법, 디자인 수정 등)
