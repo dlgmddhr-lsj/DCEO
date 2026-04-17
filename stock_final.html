@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockBoard Final - 통합 주식 현황판</title>
+    <!-- Core Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prop-types@15.8.1/prop-types.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700;900&display=swap');
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #020617;
+            color: #f1f5f9;
+            margin: 0;
+            overflow: hidden;
+        }
+        .sidebar-item-active {
+            background: linear-gradient(90deg, rgba(37, 99, 235, 0.2) 0%, rgba(37, 99, 235, 0) 100%);
+            border-left: 4px solid #3b82f6;
+            color: #ffffff;
+        }
+        .index-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.2s;
+        }
+        .index-card:hover { transform: translateY(-2px); border-color: rgba(59, 130, 246, 0.3); }
+        .custom-table th { color: #64748b; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; padding: 12px 16px; border-bottom: 1px solid rgba(51, 65, 85, 0.5); }
+        .custom-table td { padding: 16px; font-size: 0.875rem; border-bottom: 1px solid rgba(51, 65, 85, 0.3); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        const { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } = window.Recharts;
+
+        // 시장별 종목 데이터
+        const MARKET_DATA = {
+            KOREA: [
+                { code: '005930', name: '삼성전자', price: 84500, change: '+1.20%', color: 'text-red-500' },
+                { code: '000660', name: 'SK하이닉스', price: 182300, change: '+2.45%', color: 'text-red-500' },
+                { code: '035420', name: 'NAVER', price: 195000, change: '-0.81%', color: 'text-blue-500' },
+                { code: '005380', name: '현대차', price: 251000, change: '+0.40%', color: 'text-red-500' }
+            ],
+            US: [
+                { code: 'AAPL', name: 'Apple Inc.', price: 189.45, change: '+0.65%', color: 'text-red-500' },
+                { code: 'TSLA', name: 'Tesla', price: 175.22, change: '-1.40%', color: 'text-blue-500' },
+                { code: 'NVDA', name: 'NVIDIA', price: 890.12, change: '+3.12%', color: 'text-red-500' },
+                { code: 'MSFT', name: 'Microsoft', price: 415.60, change: '+0.15%', color: 'text-red-500' }
+            ],
+            ETF: [
+                { code: '069500', name: 'KODEX 200', price: 36245, change: '+0.88%', color: 'text-red-500' },
+                { code: '133690', name: 'TIGER 미국나스닥100', price: 112450, change: '+1.10%', color: 'text-red-500' },
+                { code: '252670', name: 'KODEX 200선물인버스2X', price: 2145, change: '-1.85%', color: 'text-blue-500' }
+            ]
+        };
+
+        const DashboardFinal = () => {
+            const [market, setMarket] = useState('KOREA');
+            const [selectedStock, setSelectedStock] = useState(MARKET_DATA.KOREA[0]);
+            const [chartData, setChartData] = useState([]);
+
+            // 차트 가상 데이터 생성
+            useEffect(() => {
+                const basePrice = selectedStock.price;
+                const data = Array.from({length: 20}, (_, i) => ({
+                    time: `${9 + Math.floor(i/3)}:${(i%3)*20}`,
+                    price: Math.round(basePrice * (1 + (Math.random() - 0.5) * 0.02))
+                }));
+                setChartData(data);
+            }, [selectedStock]);
+
+            return (
+                <div className="flex h-screen w-screen overflow-hidden">
+                    {/* 1. 사이드바 */}
+                    <aside className="w-72 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0">
+                        <div className="p-8">
+                            <h1 className="text-2xl font-black text-blue-500 tracking-tighter">STOCKBOARD</h1>
+                        </div>
+                        
+                        <nav className="flex-1 px-4 space-y-2">
+                            <p className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Markets</p>
+                            <SidebarItem icon="🇰🇷" label="국내 주식" active={market === 'KOREA'} onClick={() => setMarket('KOREA')} />
+                            <SidebarItem icon="🇺🇸" label="해외 주식" active={market === 'US'} onClick={() => setMarket('US')} />
+                            <SidebarItem icon="📈" label="ETF (TIGER/KODEX)" active={market === 'ETF'} onClick={() => setMarket('ETF')} />
+                            <SidebarItem icon="⭐️" label="관심 종목" active={market === 'FAV'} onClick={() => setMarket('FAV')} />
+                        </nav>
+
+                        <div className="p-6">
+                            <div className="bg-slate-800/50 rounded-2xl p-4 border border-slate-700">
+                                <p className="text-xs font-bold text-slate-400 mb-2">실시간 종목 리스트</p>
+                                <div className="space-y-3">
+                                    {MARKET_DATA[market]?.map(stock => (
+                                        <div 
+                                            key={stock.code} 
+                                            onClick={() => setSelectedStock(stock)}
+                                            className={`flex justify-between items-center cursor-pointer p-2 rounded-lg transition-colors ${selectedStock.code === stock.code ? 'bg-slate-700' : 'hover:bg-slate-800'}`}
+                                        >
+                                            <div>
+                                                <p className="text-xs font-bold text-white">{stock.name}</p>
+                                                <p className="text-[10px] text-slate-500">{stock.code}</p>
+                                            </div>
+                                            <p className={`text-[10px] font-bold ${stock.color}`}>{stock.change}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+
+                    {/* 2. 메인 콘텐츠 */}
+                    <main className="flex-1 flex flex-col min-w-0 bg-[#020617]">
+                        {/* 상단 바: 지수 현황 */}
+                        <header className="h-24 border-b border-slate-800 flex items-center px-8 gap-6 overflow-x-auto no-scrollbar">
+                            <div className="flex-1 min-w-[200px] relative">
+                                <input type="text" placeholder="종목명 또는 코드 입력" className="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-2 px-10 text-sm focus:outline-none focus:border-blue-500" />
+                                <span className="absolute left-3 top-2.5 opacity-40">🔍</span>
+                            </div>
+                            <div className="flex gap-4 shrink-0">
+                                <IndexCard label="KOSPI" value="2,650.21" change="+1.2%" color="text-red-500" />
+                                <IndexCard label="KOSDAQ" value="864.55" change="+0.4%" color="text-red-500" />
+                                <IndexCard label="S&P 500" value="5,123.10" change="-0.2%" color="text-blue-500" />
+                                <IndexCard label="NASDAQ" value="16,274.94" change="-1.1%" color="text-blue-500" />
+                            </div>
+                        </header>
+
+                        {/* 메인 영역 (스크롤 가능) */}
+                        <div className="flex-1 overflow-y-auto p-8 space-y-8">
+                            {/* 상단: 현재가 정보 */}
+                            <div className="flex justify-between items-end">
+                                <div>
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <h2 className="text-4xl font-black text-white">{selectedStock.name}</h2>
+                                        <span className="text-sm font-medium text-slate-500 bg-slate-800 px-3 py-1 rounded-full">{selectedStock.code}</span>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-5xl font-black tracking-tight text-white">{selectedStock.price.toLocaleString()}</span>
+                                        <div className={`flex flex-col font-bold ${selectedStock.color}`}>
+                                            <span className="text-xl">▲ {selectedStock.change}</span>
+                                            <span className="text-sm">+1,200 (오늘)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
+                                    {['일', '주', '월', '연'].map(t => (
+                                        <button key={t} className={`px-6 py-2 rounded-lg text-xs font-bold transition-all ${t === '일' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}>
+                                            {t}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* 중앙: 차트 영역 */}
+                            <div className="h-96 bg-slate-900/50 rounded-[32px] p-8 border border-slate-800 relative shadow-2xl">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={chartData}>
+                                        <defs>
+                                            <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                                        <XAxis dataKey="time" stroke="#475569" axisLine={false} tickLine={false} tick={{fontSize: 10}} dy={10} />
+                                        <YAxis stroke="#475569" axisLine={false} tickLine={false} tick={{fontSize: 10}} domain={['auto', 'auto']} tickFormatter={(v) => v.toLocaleString()} />
+                                        <Tooltip 
+                                            contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}}
+                                            itemStyle={{color: '#3b82f6', fontWeight: 'bold'}}
+                                        />
+                                        <Area type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+
+                            {/* 하단: 재무제표 & 뉴스 그리드 */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                {/* 하단 왼쪽: 재무제표 */}
+                                <div className="bg-slate-900/50 rounded-[32px] p-8 border border-slate-800">
+                                    <h3 className="text-xl font-bold mb-6 flex items-center gap-2">📊 주요 재무제표 <span className="text-xs font-normal text-slate-500">(연간)</span></h3>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left custom-table">
+                                            <thead>
+                                                <tr><th>항목</th><th>2021</th><th>2022</th><th className="text-blue-400">2023(E)</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr><td className="font-bold text-slate-300">매출액</td><td>279조</td><td>302조</td><td className="text-blue-400 font-bold">258조</td></tr>
+                                                <tr><td className="font-bold text-slate-300">영업이익</td><td>51조</td><td>43조</td><td className="text-blue-400 font-bold">6.5조</td></tr>
+                                                <tr><td className="font-bold text-slate-300">당기순이익</td><td>39조</td><td>55조</td><td className="text-blue-400 font-bold">12조</td></tr>
+                                                <tr><td className="font-bold text-slate-300">ROE</td><td>13.9%</td><td>17.1%</td><td className="text-blue-400 font-bold">4.2%</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                {/* 하단 오른쪽: 실시간 뉴스 */}
+                                <div className="bg-slate-900/50 rounded-[32px] p-8 border border-slate-800">
+                                    <h3 className="text-xl font-bold mb-6 flex items-center gap-2">📰 관련 실시간 뉴스</h3>
+                                    <div className="space-y-6">
+                                        <NewsItem title={`${selectedStock.name}, 역대급 실적 발표 임박... 목표가 상향`} time="10분 전" source="경제신문" />
+                                        <NewsItem title="외국인 투자자 5거래일 연속 순매수 행진" time="45분 전" source="금융뉴스" />
+                                        <NewsItem title="글로벌 공급망 재편에 따른 수혜 기대감 증폭" time="2시간 전" source="산업일보" />
+                                        <NewsItem title="내일 배당락일... 주가 향방은?" time="3시간 전" source="증권방송" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const SidebarItem = ({ icon, label, active, onClick }) => (
+            <button 
+                onClick={onClick}
+                className={`w-full flex items-center gap-4 px-6 py-4 text-sm font-bold transition-all rounded-xl ${active ? 'sidebar-item-active' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'}`}
+            >
+                <span className="text-lg">{icon}</span>
+                {label}
+            </button>
+        );
+
+        const IndexCard = ({ label, value, change, color }) => (
+            <div className="index-card px-5 py-3 rounded-2xl min-w-[140px]">
+                <p className="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-tighter">{label}</p>
+                <p className="text-base font-black text-white leading-none mb-1">{value}</p>
+                <p className={`text-[10px] font-bold ${color}`}>{change}</p>
+            </div>
+        );
+
+        const NewsItem = ({ title, time, source }) => (
+            <div className="group cursor-pointer">
+                <p className="text-sm font-bold text-slate-200 group-hover:text-blue-400 transition-colors line-clamp-1 mb-1">{title}</p>
+                <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                    <span className="font-bold text-slate-600">{source}</span>
+                    <span>•</span>
+                    <span>{time}</span>
+                </div>
+            </div>
+        );
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<DashboardFinal />);
+    </script>
+</body>
+</html>
